@@ -7,38 +7,65 @@ import {useState } from "react";
 export default function Home() {
   const [image, setImage] = useState(null);
   const [createObjectURL, setCreateObjectURL] = useState(null);
+  const [outputImg, setOutputImage] = useState(null);
 
-  const [state, setState] = useState({selectedFile: null})
+  // const [state, setState] = useState({selectedFile: null})
 
-  const uploadToClient = (event) => {
+  const convertBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const fileReader = new FileReader();
+      fileReader.readAsDataURL(file);
+
+      fileReader.onload = () => {
+        resolve(fileReader?.result);
+      };
+
+      fileReader.onerror = (error) => {
+        reject(error);
+      };
+    });
+  };
+
+  const uploadToClient = async (event) => {
     if (event.target.files && event.target.files[0]) {
       const i = event.target.files[0];
+      const base64 = await convertBase64(i);
 
-      setImage(i);
-      console.log("i" ,i)
+      setImage(base64);
       setCreateObjectURL(URL.createObjectURL(i));
-      setState({ selectedFile: event.target.files[0] })
+      // setState({ selectedFile: event.target.files[0] })
+    
+    
     }
   };
+
+
   const submitContact = async (event) => {
     event.preventDefault();
-    // const name = event.target.inp_img;
-    // const files = event.target.file;
-    // console.log(files);
+    // console.log(image)
 
-    // const body = new FormData();
-    // body.append("file", image);
-    // console.log(body)
+    const response = await fetch("/api/object-detection", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        img: image,
+      }),
+    });
 
-    console.log(state.selectedFile);
-    // axios.post('http://0.0.0.0:8000/object-detection', state.selectedFile)
-    axios({
-      method: 'get',
-      url: 'http://0.0.0.0:8000',
-      responseType: 'stream'
-    })
+    const responseData = await response.json();
+
+    setOutputImage(responseData.data.output_img)
+
+    // obj_cords: [ { name: 'bottle_1', x1: 115, y1: 45, x2: 384, y2: 676 } ]
+
+    const obj_cords = responseData.data.obj_cords
 
   };
+
+
+
   return (
     <div className={styles.container}>
       <Head>
@@ -76,7 +103,8 @@ export default function Home() {
           <div className={styles.card}>
             <h2>Output Image</h2>
             <div className={styles.img_container}>
-              <img src="" className={styles.img} />
+              <img src={`data:image/png;base64,${outputImg}`} className={styles.img} />
+              
             </div>
             
             
